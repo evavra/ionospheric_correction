@@ -1,5 +1,11 @@
 # ionospheric_correction
 
+Note: Prior to performing the ionosphere correction, make sure that an alias for MATLAB is specified in your .bash_profile or .bashrc, i.e.:
+
+alias matlab='/Applications/MATLAB_R2020a.app/bin/matlab'
+
+Note that the path to the 'matlab' executable will vary depending on your installation location.
+
 We use the split-spectrum method (Gomba etal., 2015; Heresh et al., 2017) to correct ionospheric noise
 
 $$ \Delta \hat{\phi}_{iono} = \frac{f_L f_H}{f_0 (f^2_H - f^2_L)}(\Delta \phi_L f_H - \Delta \phi_H f_L) $$
