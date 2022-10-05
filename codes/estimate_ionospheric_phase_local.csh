@@ -2,17 +2,20 @@
 #	$id$
 # Written by Xiaohua (Eric) Xu first, using split spectrum method
 # Modified by Zeyu Jin next, using non-isotropic filter instead of rectangular filter
+# Lasts updated by Ellis Vavra (10/2022)
+#
 # Apply linear trend first to interpolate NaNs, then apply nearest neighbour interpolation
 # to recover the non-linear pattern of ionospheric phase
 #
+# NOTE: include:
 # alias matlab='/Applications/MATLAB_R2020a.app/bin/matlab -nojvm -nodesktop'
-# in your ~/.bashrc file
+# in your ~/.bashrc file (modify MATLAB path as necessary).
 
 if ($#argv != 4 && $#argv != 6) then
   echo ""
   echo "Usage: estimate_ionospheric_phase.csh intf_high intf_low intf_orig intf_to_be_corrected [xratio yratio]"
   echo ""
-  echo " estimate ionosphere based on split spectrum method in Gomba et. al. 2016"
+  echo " Estimate ionospheric phase contribution based on split spectrum method of Gomba et. al. 2016"
   echo " with filtering method in Fattahi et. al. 2017"
   echo ""
   echo "Example: estimate_ionospheric_phase.csh ../iono_phase/intf_h ../iono_phase/intf_l ../iono_phase/intf_o"
