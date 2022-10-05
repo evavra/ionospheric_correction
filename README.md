@@ -19,8 +19,7 @@ The command to correct ionospheric noise:
 ```
 cd iono_correction
 
-estimate_ionospheric_phase_local.csh  ../../intf_h/20160518_20161019  ../../intf_l/20160518_20161019  
-../../intf_o/20160518_20161019  ../../20160518_20161019  0.82  7.5
+estimate_ionospheric_phase_local.csh ../../intf_h/20160518_20161019 ../../intf_l/20160518_20161019 ../../intf_o/20160518_20161019 ../../20160518_20161019  0.82  7.5
 ```
 The last two parameters denote the filter wavelength ratio along range and azimuth directions.
 
