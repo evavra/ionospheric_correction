@@ -11,7 +11,7 @@ function correct_subswath_local(grdfile, width, thres)
         return;
     end
 
-    [range,azimuth,phase] = grdread2(grdfile);
+    [range,azimuth,phase] = grdread2(grdfile);data[i]['z']
     boundary = dlmread('boundary.txt');
     b1 = boundary(1);  b2 = boundary(2);
     L  = length(boundary);
