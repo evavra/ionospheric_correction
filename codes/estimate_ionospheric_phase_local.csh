@@ -30,6 +30,10 @@ set intf = $4
 set pair =  `echo $intfH | awk -F'/' '{print $NF}'`
 cd $pair  # be careful with the relative path
 
+set corr_min = 0.15
+set dips_min = 1000
+set seam_width = 30
+
 if ($#argv == 3) then
   set rx = 1
   set ry = 1
@@ -43,7 +47,7 @@ set prm2 = `ls $intfH/*PRM | tail -1`
 set fc = `grep center_freq $intfH/params1 | awk '{print $3}'`
 set fh = `grep high_freq $intfH/params1 | awk '{print $3}'`
 set fl = `grep low_freq $intfH/params1 | awk '{print $3}'`
-set thresh = 0.15
+
 
 echo "Applying split spectrum result to estimate ionospheric phase ($fh $fl)..."
 
@@ -85,14 +89,14 @@ echo "Correcting high passed phase by $cl * 2PI ..."
 gmt grdmath up_l.grd $cl 2 PI MUL MUL SUB = tmp.grd
 mv tmp.grd up_l.grd
 
-gmt grdmath $intfH/corr.grd $intfL/corr.grd ADD 2 DIV 0 DENAN $thresh GE 0 NAN 0 MUL 1 ADD = mask.grd
-gmt grdmath $intfH/corr.grd $intfL/corr.grd ADD 2 DIV 0 DENAN $thresh GE 0 NAN ISNAN 1 SUB -1 MUL = mask1.grd
+gmt grdmath $intfH/corr.grd $intfL/corr.grd ADD 2 DIV 0 DENAN $corr_min GE 0 NAN 0 MUL 1 ADD = mask.grd
+gmt grdmath $intfH/corr.grd $intfL/corr.grd ADD 2 DIV 0 DENAN $corr_min GE 0 NAN ISNAN 1 SUB -1 MUL = mask1.grd
 gmt grdmath mask1.grd 1 SUB -1 MUL = mask2.grd
 
 # Apply split-spectrum method
 gmt grdmath $fh $fc DIV up_l.grd MUL $fl $fc DIV up_h.grd MUL SUB $fl $fh MUL $fh $fh MUL $fl $fl MUL SUB DIV MUL = tmp_ph0.grd
 # run_correct_subswath_multiple.sh $MATLAB tmp_ph0.grd 30 220  # remove the discontinuity at the boundary
-matlab -nojvm -nodesktop  -r  "correct_subswath_local('tmp_ph0.grd', 30, 200); quit"
+matlab -nojvm -nodesktop  -r  "correct_subswath_local('tmp_ph0.grd', $seam_width, $dips_min); quit"
 
 gmt grdedit ph_correct.grd -T -Gtmp_ph0.grd        # convert the gridline node to pixel node
 rm -f ph_correct.grd
