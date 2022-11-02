@@ -15,6 +15,7 @@ for instance, $f_0 = 1.24$ GHz, but the bandwith is 4 MHz, the correction formul
 
 To solve this issue, not only do we need a large filter, but also rule out pixels whose amplitude is too large after the correction.
 
+NOTE: Before correcting merged interferograms, make sure ```params1``` is in each subband interferogram directory. 
 The command to correct ionospheric noise:
 ```
 cd iono_correction
