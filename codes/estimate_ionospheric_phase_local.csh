@@ -2,7 +2,7 @@
 #	$id$
 # Written by Xiaohua (Eric) Xu first, using split spectrum method
 # Modified by Zeyu Jin next, using non-isotropic filter instead of rectangular filter
-# Lasts updated by Ellis Vavra (10/2022)
+# Lasts updated by Ellis Vavra (11/2022)
 #
 # Apply linear trend first to interpolate NaNs, then apply nearest neighbour interpolation
 # to recover the non-linear pattern of ionospheric phase
@@ -26,12 +26,12 @@ endif
 set intfH = $1
 set intfL = $2
 set intfO = $3
-set intf = $4
-set pair =  `echo $intfH | awk -F'/' '{print $NF}'`
+set intf  = $4
+set pair  =  `echo $intfH | awk -F'/' '{print $NF}'`
 cd $pair  # be careful with the relative path
 
-set corr_min = 0.15
-set dips_min = 1000
+set corr_min   = 0.05
+set disp_max   = 1000
 set seam_width = 30
 
 if ($#argv == 3) then
@@ -44,10 +44,10 @@ endif
 set prm1 = `ls $intfH/*PRM | head -1`
 set prm2 = `ls $intfH/*PRM | tail -1`
 
+# Get band frequencies
 set fc = `grep center_freq $intfH/params1 | awk '{print $3}'`
 set fh = `grep high_freq $intfH/params1 | awk '{print $3}'`
 set fl = `grep low_freq $intfH/params1 | awk '{print $3}'`
-
 
 echo "Applying split spectrum result to estimate ionospheric phase ($fh $fl)..."
 
@@ -55,17 +55,17 @@ cp $intf/phasefilt.grd ./ph0.grd
 
 # Determine how much filtering is needed
 set wavelengh = 20000
-set rng_pxl = `grep rng_samp_rate $prm1 | head -1 | awk '{printf("%.6f\n",299792458.0/$3/2.0)}'`
-set prf = `grep PRF $prm1 | awk '{print $3}'`
-set vel = `grep SC_vel $prm1 | awk '{print $3}'`
-set azi_pxl = `echo $vel $prf | head -1 | awk '{printf("%.6f\n",$1/$2)}'`
+set rng_pxl   = `grep rng_samp_rate $prm1 | head -1 | awk '{printf("%.6f\n",299792458.0/$3/2.0)}'`
+set prf       = `grep PRF $prm1 | awk '{print $3}'`
+set vel       = `grep SC_vel $prm1 | awk '{print $3}'`
+set azi_pxl   = `echo $vel $prf | head -1 | awk '{printf("%.6f\n",$1/$2)}'`
 #gmt grdinfo $intfH/phasefilt.grd -C
-set x_inc = `gmt grdinfo $intfH/phasefilt.grd -C | awk '{print $8}'`
-set y_inc = `gmt grdinfo $intfH/phasefilt.grd -C | awk '{print $9}'`
+set x_inc     = `gmt grdinfo $intfH/phasefilt.grd -C | awk '{print $8}'`
+set y_inc     = `gmt grdinfo $intfH/phasefilt.grd -C | awk '{print $9}'`
 #echo $wavelengh $rng_pxl $x_inc $rx
 #echo $wavelengh $azi_pxl $y_inc $ry
-set filtx = `echo $wavelengh $rng_pxl $x_inc $rx | awk '{print int($1*$4/$2/$3/2)*2+1}'`
-set filty = `echo $wavelengh $azi_pxl $y_inc $ry | awk '{print int($1*$4/$2/$3/2)*2+1}'`
+set filtx     = `echo $wavelengh $rng_pxl $x_inc $rx | awk '{print int($1*$4/$2/$3/2)*2+1}'`
+set filty     = `echo $wavelengh $azi_pxl $y_inc $ry | awk '{print int($1*$4/$2/$3/2)*2+1}'`
 set filt_incx = `echo $filtx | awk '{print int($1/8)}'`
 set filt_incy = `echo $filty | awk '{print int($1/8)}'`
 echo "Filtering size is set to $filtx along range and $filty along azimuth ..."
@@ -73,30 +73,52 @@ echo "Filtering size is set to $filtx along range and $filty along azimuth ..."
 set limit = `echo $fh $fl | awk '{printf("%.3f",$1*$2/($1*$1-$2*$2)*3.1415926)}'`
 
 # Start ionospheric phase estimate
-cp $intfH/unwrap.grd ./up_h.grd
-cp $intfL/unwrap.grd ./up_l.grd
+# cp $intfH/unwrap.grd ./up_h.grd
+# cp $intfL/unwrap.grd ./up_l.grd
+cp $intfH/unwrap.grd ./up_h_orig.grd
+cp $intfL/unwrap.grd ./up_l_orig.grd
 cp $intfO/unwrap.grd ./up_o.grd
 
 # Correct for unwrapping errors
-gmt grdmath up_h.grd up_o.grd SUB = tmp.grd
-set ch = `gmt grdinfo tmp.grd -L1 -C |  awk '{if ($12 >=0) printf("%d\n",int($12/6.2831853072+0.5)); else printf("%d\n",int($12/6.2831853072-0.5))}'`
-echo "Correcting high passed phase by $ch * 2PI ..."
-gmt grdmath up_h.grd $ch 2 PI MUL MUL SUB = tmp.grd
-mv tmp.grd up_h.grd
-gmt grdmath up_l.grd up_o.grd SUB = tmp.grd
-set cl = `gmt grdinfo tmp.grd -L1 -C |  awk '{if ($12 >=0) printf("%d\n",int($12/6.2831853072+0.5)); else printf("%d\n",int($12/6.2831853072-0.5))}'`
-echo "Correcting high passed phase by $cl * 2PI ..."
-gmt grdmath up_l.grd $cl 2 PI MUL MUL SUB = tmp.grd
-mv tmp.grd up_l.grd
+# High band
+gmt grdmath up_h_orig.grd up_o.grd SUB      = diff_h_o.grd  # Get difference between high- and center-band unwrapped interferograms - includes relative unwrapping errors and dispersive effects
+gmt grdmath diff_h_o.grd 2 PI MUL FMOD      = error_h_o.grd # Get 2pi modulo of difference, due to unwrapping
+gmt grdmath diff_h_o.grd error_h_o.grd SUB  = resid_h_o.grd # Subtract and get residual differnce
+gmt grdmath up_h_orig.grd resid_h_o.grd SUB = up_h.grd      # Correct unwrapped interferogram
 
-gmt grdmath $intfH/corr.grd $intfL/corr.grd ADD 2 DIV 0 DENAN $corr_min GE 0 NAN 0 MUL 1 ADD = mask.grd
+# Old correction
+# gmt grdmath up_h.grd up_o.grd SUB = tmp.grd    
+# set ch = `gmt grdinfo tmp.grd -L1 -C |  awk '{if ($12 >=0) printf("%d\n",int($12/6.2831853072+0.5)); else printf("%d\n",int($12/6.2831853072-0.5))}'`
+# echo "Correcting high passed phase by $ch * 2PI ..."
+# gmt grdmath up_h.grd $ch 2 PI MUL MUL SUB = tmp.grd 
+# mv tmp.grd up_h.grd
+
+# Low band
+gmt grdmath up_l_orig.grd up_o.grd SUB      = diff_l_o.grd  # Get difference between high- and center-band unwrapped interferograms - includes relative unwrapping errors and dispersive effects
+gmt grdmath diff_l_o.grd 2 PI MUL FMOD      = error_l_o.grd # Get 2pi modulo of difference, due to unwrapping
+gmt grdmath diff_l_o.grd error_l_o.grd SUB  = resid_l_o.grd # Subtract and get residual differnce
+gmt grdmath up_l_orig.grd resid_l_o.grd SUB = up_l.grd      # Correct unwrapped interferogram
+
+
+# Old correction
+# gmt grdmath up_l.grd up_o.grd SUB = tmp.grd # Get difference between low- and center-band unwrapped interferograms (can be spatially variable)
+# set cl = `gmt grdinfo tmp.grd -L1 -C |  awk '{if ($12 >=0) printf("%d\n",int($12/6.2831853072+0.5)); else printf("%d\n",int($12/6.2831853072-0.5))}'`
+# echo "Correcting high passed phase by $cl * 2PI ..."
+# gmt grdmath up_l.grd $cl 2 PI MUL MUL SUB = tmp.grd 
+# mv tmp.grd up_l.grd
+
+
+# Make masks
+gmt grdmath $intfH/corr.grd $intfL/corr.grd ADD 2 DIV 0 DENAN $corr_min GE 0 NAN 0 MUL 1 ADD        = mask.grd
 gmt grdmath $intfH/corr.grd $intfL/corr.grd ADD 2 DIV 0 DENAN $corr_min GE 0 NAN ISNAN 1 SUB -1 MUL = mask1.grd
 gmt grdmath mask1.grd 1 SUB -1 MUL = mask2.grd
 
 # Apply split-spectrum method
 gmt grdmath $fh $fc DIV up_l.grd MUL $fl $fc DIV up_h.grd MUL SUB $fl $fh MUL $fh $fh MUL $fl $fl MUL SUB DIV MUL = tmp_ph0.grd
-# run_correct_subswath_multiple.sh $MATLAB tmp_ph0.grd 30 220  # remove the discontinuity at the boundary
-matlab -nojvm -nodesktop  -r  "correct_subswath_local('tmp_ph0.grd', $seam_width, $dips_min); quit"
+
+# remove the discontinuity at the boundary (requires boundary.txt file to exist, otherwise will do nothing)
+# run_correct_subswath_multiple.sh $MATLAB tmp_ph0.grd 30 220  
+matlab -nojvm -nodesktop  -r  "correct_subswath_local('tmp_ph0.grd', $seam_width, $disp_max); quit"
 
 gmt grdedit ph_correct.grd -T -Gtmp_ph0.grd        # convert the gridline node to pixel node
 rm -f ph_correct.grd
@@ -163,5 +185,5 @@ gmt grdmath tmp_ph.grd PI ADD 2 PI MUL MOD PI SUB = ph_iono.grd
 gmt grdsample tmp_ph.grd -Rph0.grd -Gtmp.grd
 gmt grdmath ph0.grd tmp.grd SUB PI ADD 2 PI MUL MOD PI SUB = ph_corrected.grd
 mv tmp_ph.grd ph_iono_orig.grd
-
+rm -rf tmp*grd
 cd ..
