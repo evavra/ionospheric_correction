@@ -13,7 +13,8 @@ function correct_subswath_local(grdfile, width, thres)
 
     [range,azimuth,phase] = grdread2(grdfile);
     boundary = dlmread('boundary.txt');
-    b1 = boundary(1);  b2 = boundary(2);
+    b1 = boundary(1);  
+    b2 = boundary(2);
     L  = length(boundary);
     
     if L == 3
@@ -25,12 +26,12 @@ function correct_subswath_local(grdfile, width, thres)
     % width = 30;  % number of columns to find the median value at the boundary
 
     % assume at least 3 subswaths for ALOS-2 interferogram
-    ph1 = reshape(phase(:,b1-width:b1),1,[]);
-    ph2 = reshape(phase(:,b1+1:b1+1+width),1,[]);
+    ph1 = reshape(phase(:, b1 - width:b1), 1, []);
+    ph2 = reshape(phase(:, b1 + 1:b1 + 1 + width), 1, []);
     offset1 = nanmedian(ph1) - nanmedian(ph2);   % subswath F1 - F2
 
-    ph3 = reshape(phase(:,b2-width:b2),1,[]);
-    ph4 = reshape(phase(:,b2+1:b2+1+width),1,[]);
+    ph3 = reshape(phase(:, b2 - width:b2), 1, []);
+    ph4 = reshape(phase(:, b2 + 1:b2 + 1 + width), 1, []);
     offset2 = nanmedian(ph4) - nanmedian(ph3);   % subswath F3 - F2
 
     if (L == 3 || L == 4) 
@@ -43,7 +44,7 @@ function correct_subswath_local(grdfile, width, thres)
         offset4 = nanmedian(ph8) - nanmedian(ph7);   % subswath F5 - F4
     end
 
-    ph_tmp1 = phase(:,1:b1) - offset1;
+    ph_tmp1 = phase(:,1:b1)     - offset1;
     ph_tmp2 = phase(:,b2+1:end) - offset2;
     ph_new  = [ph_tmp1,phase(:,b1+1:b2),ph_tmp2];
     clear ph_tmp1 ph_tmp2
