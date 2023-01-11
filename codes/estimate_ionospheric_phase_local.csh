@@ -77,8 +77,8 @@ set limit = `echo $fh $fl | awk '{printf("%.3f",$1*$2/($1*$1-$2*$2)*3.1415926)}'
 # Start ionospheric phase estimate
 # cp $intfH/unwrap.grd ./up_h.grd
 # cp $intfL/unwrap.grd ./up_l.grd
-cp $intfH/unwrap.grd ./up_h_orig.grd
-cp $intfL/unwrap.grd ./up_l_orig.grd
+cp $intfH/unwrap.grd ./up_h.grd
+cp $intfL/unwrap.grd ./up_l.grd
 cp $intfO/unwrap.grd ./up_o.grd
 
 # # Correct for unwrapping errors
@@ -119,10 +119,11 @@ gmt grdmath $fh $fc DIV up_l.grd MUL $fl $fc DIV up_h.grd MUL SUB $fl $fh MUL $f
 # Correct for discontinuities at subswath boundaries (requires boundary.txt file to exist, otherwise will do nothing)
 # run_correct_subswath_multiple.sh $MATLAB tmp_ph0.grd 30 220  
 # matlab -nojvm -nodesktop  -r  "correct_subswath_local('tmp_ph0.grd', $seam_width, $disp_max); quit"
-python correct_subswath_local.py tmp_ph0.grd boudnary.txt $seam_width $disp_max 
+python /home/class239/work/ellis/Codes/ionospheric_correction/codes/correct_subswath_local.py tmp_ph0.grd boundary.txt $seam_width $disp_max 
 
-gmt grdedit ph_correct.grd -T -Gtmp_ph0.grd        # convert the gridline node to pixel node
-rm -f ph_correct.grd
+# gmt grdedit ph_correct.grd -T -Gtmp_ph0.grd        # convert the gridline node to pixel node
+# rm -f ph_correct.grd
+mv ph_correct.grd tmp_ph0.grd        
 
 gmt grdmath tmp_ph0.grd mask.grd MUL = tmp_ph.grd
 cp tmp_ph.grd tmp_ph1.grd
@@ -138,13 +139,18 @@ mv tmp.grd mask1.grd
 gmt grdmath tmp_ph0.grd mask.grd MUL = tmp_ph.grd
 gmt grdmath mask1.grd 1 SUB -1 MUL = mask2.grd
 
+# Interpolate nans
+echo "Performing initial interpolation..."
 # nearest_grid tmp_ph.grd tmp_ph_interp.grd
 # run_linear_extrapolate.sh $MATLAB tmp_ph.grd tmp_ph_interp.grd   # use linear interpolation instead
-matlab -nojvm -nodesktop  -r  "linear_extrapolate('tmp_ph.grd', 'tmp_ph_interp.grd'); quit"
+# matlab -nojvm -nodesktop  -r  "linear_extrapolate('tmp_ph.grd', 'tmp_ph_interp.grd'); quit"
+matlab -nodisplay -nodesktop -nojvm -nosplash <"linear_extrapolate('tmp_ph.grd', 'tmp_ph_interp.grd'); quit" >>matlab_log.txt &
+
 gmt grdedit tmp_ph_interp.grd -T -Gtmp_ph_interp.grd
 
 # Perform iterative interpolation and filtering
 foreach iteration (1 2 3) 
+  echo "Working on iteration $iteration..."
   set odd = `echo $iteration | awk '{if ($1%2==0) print 0;else print 1}'`
   if ($odd == 1) then
     gmt grdfilter tmp_ph_interp.grd -Dp -Fm$filtx/$filty -Gtmp_filt.grd -V -Ni -I$filt_incx/$filt_incy
@@ -153,7 +159,8 @@ foreach iteration (1 2 3)
     # run_gauss15x3_filter.sh $MATLAB $filtx $filty  
     
     # Anistropic gaussian filter
-    matlab -nojvm -nodesktop  -r  "gauss_filter($filtx, $filty, 0, 'tmp_ph_interp.grd', 'ph_filt.grd'); quit"
+    # matlab -nojvm -nodesktop  -r  "gauss_filter($filtx, $filty, 0, 'tmp_ph_interp.grd', 'ph_filt.grd'); quit"
+    matlab -nodisplay -nodesktop -nojvm -nosplash <"gauss_filter($filtx, $filty, 0, 'tmp_ph_interp.grd', 'ph_filt.grd'); quit" >>matlab_log.txt &
     gmt grdedit ph_filt.grd -T -Gtmp_filt.grd
   endif
 
@@ -161,14 +168,18 @@ foreach iteration (1 2 3)
   mv tmp.grd tmp_filt.grd
   cp tmp_filt.grd tmp_$iteration.grd
   gmt grdmath tmp_filt.grd mask.grd MUL = tmp.grd
+
   # nearest_grid tmp.grd tmp2.grd
-  matlab -nojvm -nodesktop  -r  "linear_extrapolate('tmp.grd', 'tmp2.grd'); quit"
+  # matlab -nojvm -nodesktop  -r  "linear_extrapolate('tmp.grd', 'tmp2.grd'); quit"
+  matlab -nodisplay -nodesktop -nojvm -nosplash <"linear_extrapolate('tmp.grd', 'tmp2.grd'); quit" >>matlab_log.txt &
+
   gmt grdedit tmp2.grd -T -Gtmp2.grd 
   gmt grdmath tmp2.grd mask2.grd MUL tmp_ph0.grd 0 DENAN mask1.grd MUL ADD = tmp_ph_interp.grd
 end
 
 # Final filtering step
-matlab -nojvm -nodesktop  -r  "gauss_filter($filtx, $filty, 0, 'tmp_ph_interp.grd', 'ph_filt.grd'); quit"
+# matlab -nojvm -nodesktop  -r  "gauss_filter($filtx, $filty, 0, 'tmp_ph_interp.grd', 'ph_filt.grd'); quit"
+matlab -nodisplay -nodesktop -nojvm -nosplash <"gauss_filter($filtx, $filty, 0, 'tmp_ph_interp.grd', 'ph_filt.grd'); quit" >>matlab_log.txt &
 gmt grdedit ph_filt.grd -T -Gtmp_filt.grd
 
 gmt grdmath tmp_filt.grd PI ADD 2 PI MUL MOD PI SUB = tmp_ph.grd
