@@ -57,12 +57,12 @@ def correct_subswath_local(grd_file, seam_file, seam_width, disp_max, file_name_
 
     # Load data
     rng, azi, phase = read_grd(grd_file)
-    seam_index      = np.loadtxt(seam_file, dtype=int)
+    seam_index      = np.loadtxt(seam_file, dtype=int, ndmin=1)
+    # print(seam_index)
     seam_index     -= 1 # Account for python indexing
     phase_corrected = np.copy(phase)
 
     L  = len(seam_index) # number of seams
-    print(seam_index, phase.shape)
     subswaths = []
 
 
