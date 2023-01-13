@@ -143,8 +143,8 @@ gmt grdmath mask1.grd 1 SUB -1 MUL = mask2.grd
 echo "Performing initial interpolation..."
 # nearest_grid tmp_ph.grd tmp_ph_interp.grd
 # run_linear_extrapolate.sh $MATLAB tmp_ph.grd tmp_ph_interp.grd   # use linear interpolation instead
-# matlab -nojvm -nodesktop  -r  "linear_extrapolate('tmp_ph.grd', 'tmp_ph_interp.grd'); quit"
-matlab -nodisplay -nodesktop -nojvm -nosplash <"linear_extrapolate('tmp_ph.grd', 'tmp_ph_interp.grd'); quit" >matlab_log.txt 
+matlab -nojvm -nodesktop  -r  "linear_extrapolate('tmp_ph.grd', 'tmp_ph_interp.grd'); quit"
+# matlab -nodisplay -nodesktop -nojvm -nosplash <"linear_extrapolate('tmp_ph.grd', 'tmp_ph_interp.grd'); quit" >matlab_log.txt 
 
 gmt grdedit tmp_ph_interp.grd -T -Gtmp_ph_interp.grd
 
@@ -159,8 +159,8 @@ foreach iteration (1 2 3)
     # run_gauss15x3_filter.sh $MATLAB $filtx $filty  
     
     # Anistropic gaussian filter
-    # matlab -nojvm -nodesktop  -r  "gauss_filter($filtx, $filty, 0, 'tmp_ph_interp.grd', 'ph_filt.grd'); quit"
-    matlab -nodisplay -nodesktop -nojvm -nosplash <"gauss_filter($filtx, $filty, 0, 'tmp_ph_interp.grd', 'ph_filt.grd'); quit" >matlab_log.txt
+    matlab -nojvm -nodesktop  -r  "gauss_filter($filtx, $filty, 0, 'tmp_ph_interp.grd', 'ph_filt.grd'); quit"
+    # matlab -nodisplay -nodesktop -nojvm -nosplash <"gauss_filter($filtx, $filty, 0, 'tmp_ph_interp.grd', 'ph_filt.grd'); quit" >matlab_log.txt
     gmt grdedit ph_filt.grd -T -Gtmp_filt.grd
   endif
 
@@ -170,16 +170,16 @@ foreach iteration (1 2 3)
   gmt grdmath tmp_filt.grd mask.grd MUL = tmp.grd
 
   # nearest_grid tmp.grd tmp2.grd
-  # matlab -nojvm -nodesktop  -r  "linear_extrapolate('tmp.grd', 'tmp2.grd'); quit"
-  matlab -nodisplay -nodesktop -nojvm -nosplash <"linear_extrapolate('tmp.grd', 'tmp2.grd'); quit" >matlab_log.txt
+  matlab -nojvm -nodesktop  -r  "linear_extrapolate('tmp.grd', 'tmp2.grd'); quit"
+  # matlab -nodisplay -nodesktop -nojvm -nosplash <"linear_extrapolate('tmp.grd', 'tmp2.grd'); quit" >matlab_log.txt
 
   gmt grdedit tmp2.grd -T -Gtmp2.grd 
   gmt grdmath tmp2.grd mask2.grd MUL tmp_ph0.grd 0 DENAN mask1.grd MUL ADD = tmp_ph_interp.grd
 end
 
 # Final filtering step
-# matlab -nojvm -nodesktop  -r  "gauss_filter($filtx, $filty, 0, 'tmp_ph_interp.grd', 'ph_filt.grd'); quit"
-matlab -nodisplay -nodesktop -nojvm -nosplash <"gauss_filter($filtx, $filty, 0, 'tmp_ph_interp.grd', 'ph_filt.grd'); quit" >matlab_log.txt
+matlab -nojvm -nodesktop  -r  "gauss_filter($filtx, $filty, 0, 'tmp_ph_interp.grd', 'ph_filt.grd'); quit"
+# matlab -nodisplay -nodesktop -nojvm -nosplash <"gauss_filter($filtx, $filty, 0, 'tmp_ph_interp.grd', 'ph_filt.grd'); quit" >matlab_log.txt
 gmt grdedit ph_filt.grd -T -Gtmp_filt.grd
 
 gmt grdmath tmp_filt.grd PI ADD 2 PI MUL MOD PI SUB = tmp_ph.grd
